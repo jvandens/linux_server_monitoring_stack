@@ -20,7 +20,7 @@ services:
   prometheus:
     image: prom/prometheus:latest
     volumes:
-      - ./stack/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
     command:
       - --config.file=/etc/prometheus/prometheus.yml
     ports:
