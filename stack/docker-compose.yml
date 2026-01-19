@@ -1,7 +1,5 @@
 version: "3.8"
-
 services:
-
   influxdb:
     image: influxdb:2.7
     ports:
@@ -16,16 +14,17 @@ services:
       - DOCKER_INFLUXDB_INIT_BUCKET=metrics
       - DOCKER_INFLUXDB_INIT_RETENTION=90d
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_ADMIN_TOKEN}
-
+  
   prometheus:
     image: prom/prometheus:latest
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    configs:
+      - source: prometheus_config
+        target: /etc/prometheus/prometheus.yml
     command:
       - --config.file=/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
-
+  
   node-exporter:
     image: quay.io/prometheus/node-exporter:latest
     network_mode: host
@@ -37,20 +36,22 @@ services:
       - --collector.textfile.directory=/var/lib/node_exporter/textfile_collector
     volumes:
       - /var/lib/node_exporter/textfile_collector:/var/lib/node_exporter/textfile_collector
-
+  
   process-exporter:
     image: ncabatoff/process-exporter:latest
     volumes:
       - /proc:/host/proc:ro
     environment:
       - PROCFS=/host/proc
-
+    ports:
+      - "9256:9256"
+  
   nvidia-exporter:
     image: nvidia/dcgm-exporter:latest
     runtime: nvidia
     ports:
       - "9400:9400"
-
+  
   grafana:
     image: grafana/grafana:latest
     ports:
@@ -63,3 +64,27 @@ services:
 volumes:
   influxdb-data:
   grafana-data:
+
+configs:
+  prometheus_config:
+    content: |
+      global:
+        scrape_interval: 15s
+      
+      remote_write:
+        - url: http://influxdb:8086/api/v2/write?org=hpc&bucket=metrics&precision=ms
+          headers:
+            Authorization: "Token ${INFLUXDB_ADMIN_TOKEN}"
+      
+      scrape_configs:
+        - job_name: node
+          static_configs:
+            - targets: ['host.docker.internal:9100']
+        
+        - job_name: process
+          static_configs:
+            - targets: ['process-exporter:9256']
+        
+        - job_name: gpu
+          static_configs:
+            - targets: ['nvidia-exporter:9400']
