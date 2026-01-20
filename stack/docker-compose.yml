@@ -71,11 +71,6 @@ configs:
       global:
         scrape_interval: 15s
       
-      remote_write:
-        - url: http://influxdb:8086/api/v2/write?org=hpc&bucket=metrics&precision=ms
-          headers:
-            Authorization: "Token ${INFLUXDB_ADMIN_TOKEN}"
-      
       scrape_configs:
         - job_name: node
           static_configs:
